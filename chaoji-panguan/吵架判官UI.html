@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>吵架判官 - AI评判工具</title>
+    <style>
+        :root {
+            --primary: #8B0000;
+            --primary-dark: #5C0000;
+            --gold: #D4AF37;
+            --gold-light: #F4E4BA;
+            --black: #1A1A1A;
+            --red: #C41E3A;
+            --red-light: #FF6B6B;
+            --white: #FFFFFF;
+            --gray-dark: #333333;
+            --gray: #666666;
+            --gray-light: #F5F5F5;
+            --shadow: 0 4px 20px rgba(139, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(180deg, var(--black) 0%, var(--gray-dark) 100%);
+            min-height: 100vh;
+            color: var(--white);
+        }
+
+        .phone {
+            max-width: 414px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: var(--black);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page {
+            display: none;
+            min-height: 100vh;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .top-decoration {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(180deg, var(--primary) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        /* ========== 首页样式 ========== */
+        .home-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding-top: 60px;
+        }
+
+        .logo-container {
+            margin-bottom: 40px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .gavel-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.5);
+            margin: 0 auto 20px;
+        }
+
+        .gavel-icon svg {
+            width: 60px;
+            height: 60px;
+        }
+
+        .app-title {
+            font-size: 32px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .app-slogan {
+            color: var(--gray);
+            font-size: 14px;
+            margin-bottom: 60px;
+        }
+
+        .start-btn {
+            width: 200px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--red) 100%);
+            border: none;
+            border-radius: 28px;
+            color: var(--white);
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(196, 30, 58, 0.5);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .start-btn:active {
+            transform: scale(0.95);
+        }
+
+        .history-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: var(--gold);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+
+        .history-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* ========== 模式选择页 ========== */
+        .mode-page {
+            padding-top: 40px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .mode-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .mode-card {
+            background: linear-gradient(135deg, var(--gray-dark) 0%, var(--black) 100%);
+            border: 2px solid var(--gray);
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-card.selected {
+            border-color: var(--gold);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        .mode-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .mode-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mode-icon.anonymous {
+            background: var(--primary);
+        }
+
+        .mode-icon.realname {
+            background: var(--gold);
+        }
+
+        .mode-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .mode-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .mode-desc {
+            color: var(--gray);
+            font-size: 13px;
+        }
+
+        .radio-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--gray);
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mode-card.selected .radio-indicator {
+            border-color: var(--gold);
+        }
+
+        .mode-card.selected .radio-indicator::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gold);
+        }
+
+        .continue-btn {
+            width: 100%;
+            height: 56px;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+            border: none;
+            border-radius: 28px;
+            color: var(--black);
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 40px;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
+        }
+
+        .continue-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* ========== 观点输入页 ========== */
+        .input-page {
+            padding-top: 20px;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 30px;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--gray);
+        }
+
+        .step-dot.active {
+            width: 24px;
+            background: var(--gold);
+        }
+
+        .opinion-section {
+            margin-bottom: 24px;
+        }
+
+        .party-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .party-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .party-a .party-badge {
+            background: var(--primary);
+        }
+
+        .party-b .party-badge {
+            background: var(--gray-dark);
+            border: 1px solid var(--gray);
+        }
+
+        .party-name {
+            font-size: 14px;
+            color: var(--gray);
+        }
+
+        .opinion-input {
+            width: 100%;
+            height: 140px;
+            background: var(--gray-dark);
+            border: 2px solid var(--gray);
+            border-radius: 12px;
+            padding: 16px;
+            color: var(--white);
+            font-size: 15px;
+            resize: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .opinion-input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .opinion-input::placeholder {
+            color: var(--gray);
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 8px;
+        }
+
+        .vs-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin: 30px 0;
+        }
+
+        .vs-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gray), transparent);
+        }
+
+        .vs-text {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--gold);
+            font-style: italic;
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--red) 100%);
+            border: none;
+            border-radius: 28px;
+            color: var(--white);
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(196, 30, 58, 0.5);
+        }
+
+        /* ========== 加载页 ========== */
+        .loading-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding-top: 100px;
+        }
+
+        .judge-animation {
+            width: 150px;
+            height: 150px;
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .judge-gavel {
+            width: 100%;
+            height: 100%;
+            animation: judge 1.5s ease-in-out infinite;
+        }
+
+        @keyframes judge {
+            0%, 100% { transform: rotate(-15deg); }
+            50% { transform: rotate(15deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            color: var(--gold);
+            margin-bottom: 8px;
+        }
+
+        .loading-subtext {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: var(--gray-dark);
+            border-radius: 2px;
+            margin-top: 30px;
+            overflow: hidden;
+        }
+
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), var(--gold-light));
+            border-radius: 2px;
+            animation: loading 2s ease-in-out infinite;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        /* ========== 结果页 ========== */
+        .result-page {
+            padding-top: 20px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, var(--gray-dark) 0%, var(--black) 100%);
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 24px;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
+        }
+
+        .result-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+            border-radius: 20px;
+            color: var(--black);
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .winner-display {
+            font-size: 36px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .winner-display.party-a {
+            color: var(--red-light);
+        }
+
+        .winner-display.party-b {
+            color: var(--gray-light);
+        }
+
+        .winner-display.draw {
+            color: var(--gold);
+        }
+
+        .winner-label {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .reason-section {
+            background: var(--gray-dark);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .reason-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gold);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .reason-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: var(--white);
+            text-align: left;
+        }
+
+        .dimension-list {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .dimension-item {
+            background: var(--black);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+        }
+
+        .dimension-label {
+            font-size: 12px;
+            color: var(--gray);
+            margin-bottom: 4px;
+        }
+
+        .dimension-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .dimension-value.good {
+            color: #4CAF50;
+        }
+
+        .dimension-value.medium {
+            color: var(--gold);
+        }
+
+        .dimension-value.poor {
+            color: var(--red-light);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        .share-btn {
+            flex: 1;
+            height: 50px;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .share-btn.primary {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+            border: none;
+            color: var(--black);
+        }
+
+        .share-btn.secondary {
+            background: transparent;
+            border: 2px solid var(--gray);
+            color: var(--white);
+        }
+
+        .share-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .new-case-btn {
+            width: 100%;
+            height: 50px;
+            background: transparent;
+            border: 2px solid var(--primary);
+            border-radius: 25px;
+            color: var(--primary);
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 12px;
+            cursor: pointer;
+        }
+
+        /* ========== 历史记录页 ========== */
+        .history-page {
+            padding-top: 20px;
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--gold);
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .history-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .history-item {
+            background: var(--gray-dark);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:active {
+            transform: scale(0.98);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: var(--gray);
+        }
+
+        .history-winner {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .history-winner.party-a {
+            background: rgba(196, 30, 58, 0.2);
+            color: var(--red-light);
+        }
+
+        .history-winner.party-b {
+            background: rgba(102, 102, 102, 0.2);
+            color: var(--gray-light);
+        }
+
+        .history-winner.draw {
+            background: rgba(212, 175, 55, 0.2);
+            color: var(--gold);
+        }
+
+        .history-preview {
+            font-size: 13px;
+            color: var(--gray);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            opacity: 0.5;
+        }
+
+        .empty-text {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        /* ========== 动画 ========== */
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-up {
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="phone">
+        <div class="top-decoration"></div>
+
+        <!-- 首页 -->
+        <div class="page home-page active" id="page-home">
+            <a href="#" class="history-link" onclick="showPage('page-history')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12,6 12,12 16,14"/>
+                </svg>
+                历史记录
+            </a>
+            
+            <div class="logo-container">
+                <div class="gavel-icon">
+                    <svg viewBox="0 0 24 24" fill="#1A1A1A">
+                        <path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.5L17 8v8l-5 3-5-3V8l5-3.5z"/>
+                        <path d="M12 8v8M9 10l3-2 3 2"/>
+                    </svg>
+                </div>
+                <h1 class="app-title">吵架判官</h1>
+                <p class="app-slogan">AI 主持公道，让你心服口服</p>
+            </div>
+
+            <button class="start-btn" onclick="showPage('page-mode')">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                开始评判
+            </button>
+        </div>
+
+        <!-- 模式选择页 -->
+        <div class="page mode-page" id="page-mode">
+            <div class="page-header">
+                <h2 class="page-title">选择评判模式</h2>
+                <p class="page-subtitle">匿名模式下不显示用户身份</p>
+            </div>
+
+            <div class="mode-cards">
+                <div class="mode-card selected" onclick="selectMode(this, 'anonymous')">
+                    <div class="mode-card-header">
+                        <div class="mode-icon anonymous">
+                            <svg viewBox="0 0 24 24" fill="#fff">
+                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                            </svg>
+                        </div>
+                        <span class="mode-name">匿名模式</span>
+                        <div class="radio-indicator"></div>
+                    </div>
+                    <p class="mode-desc">笑看风云，不透露身份</p>
+                </div>
+
+                <div class="mode-card" onclick="selectMode(this, 'realname')">
+                    <div class="mode-card-header">
+                        <div class="mode-icon realname">
+                            <svg viewBox="0 0 24 24" fill="#1A1A1A">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </div>
+                        <span class="mode-name">实名模式</span>
+                        <div class="radio-indicator"></div>
+                    </div>
+                    <p class="mode-desc">愿赌服输，显示双方昵称</p>
+                </div>
+            </div>
+
+            <button class="continue-btn" onclick="showPage('page-input')">继续</button>
+        </div>
+
+        <!-- 观点输入页 -->
+        <div class="page input-page" id="page-input">
+            <div class="step-indicator">
+                <div class="step-dot active"></div>
+                <div class="step-dot active"></div>
+                <div class="step-dot"></div>
+            </div>
+
+            <div class="page-header">
+                <h2 class="page-title">陈述双方观点</h2>
+                <p class="page-subtitle">请客观描述争论内容</p>
+            </div>
+
+            <div class="opinion-section party-a">
+                <div class="party-label">
+                    <span class="party-badge">甲方</span>
+                    <span class="party-name" id="party-a-name">有理的一方</span>
+                </div>
+                <textarea class="opinion-input" id="input-party-a" placeholder="请输入甲方观点..." maxlength="500"></textarea>
+                <div class="char-count"><span id="count-a">0</span>/500</div>
+            </div>
+
+            <div class="vs-divider">
+                <div class="vs-line"></div>
+                <span class="vs-text">VS</span>
+                <div class="vs-line"></div>
+            </div>
+
+            <div class="opinion-section party-b">
+                <div class="party-label">
+                    <span class="party-badge">乙方</span>
+                    <span class="party-name" id="party-b-name">无理的一方</span>
+                </div>
+                <textarea class="opinion-input" id="input-party-b" placeholder="请输入乙方观点..." maxlength="500"></textarea>
+                <div class="char-count"><span id="count-b">0</span>/500</div>
+            </div>
+
+            <button class="submit-btn" onclick="submitJudgment()">提交判官</button>
+        </div>
+
+        <!-- 加载页 -->
+        <div class="page loading-page" id="page-loading">
+            <div class="judge-animation">
+                <svg class="judge-gavel" viewBox="0 0 24 24" fill="#D4AF37">
+                    <path d="M3 17h6v-2H3v2zm0-4h10v-2H3v2zm0-4h14V7H3v2z"/>
+                    <path d="M19 12l-4-4 4-4v8z" fill="#8B0000"/>
+                </svg>
+            </div>
+            <p class="loading-text">判官正在审理...</p>
+            <p class="loading-subtext">AI 正在分析双方观点</p>
+            <div class="loading-progress">
+                <div class="loading-bar"></div>
+            </div>
+        </div>
+
+        <!-- 结果页 -->
+        <div class="page result-page" id="page-result">
+            <div class="result-card slide-up">
+                <div class="result-badge">判决结果</div>
+                <div class="winner-display party-a" id="winner-text">甲方胜</div>
+                <div class="winner-label" id="winner-subtitle">逻辑更清晰，论据更充分</div>
+            </div>
+
+            <div class="reason-section fade-in">
+                <div class="reason-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                    判决理由
+                </div>
+                <div class="reason-content" id="reason-content">
+                    甲方在论证过程中展现了更强的逻辑性，论点与论据之间形成了有效的支撑关系。相比之下，乙方虽然也提出了自己的观点，但在事实依据和逻辑连贯性方面略显不足。AI 综合分析了双方的论据完整性、逻辑严密性以及情感因素，最终判定甲方胜出。
+                </div>
+
+                <div class="dimension-list">
+                    <div class="dimension-item">
+                        <div class="dimension-label">逻辑性</div>
+                        <div class="dimension-value good">甲方 90分</div>
+                    </div>
+                    <div class="dimension-item">
+                        <div class="dimension-label">事实依据</div>
+                        <div class="dimension-value good">甲方 85分</div>
+                    </div>
+                    <div class="dimension-item">
+                        <div class="dimension-label">情感控制</div>
+                        <div class="dimension-value medium">乙方 70分</div>
+                    </div>
+                    <div class="dimension-item">
+                        <div class="dimension-label">双赢可能</div>
+                        <div class="dimension-value poor">难以调和</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="share-btn primary" onclick="shareResult()">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+                    </svg>
+                    分享结果
+                </button>
+                <button class="share-btn secondary" onclick="saveResult()">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                    </svg>
+                    保存
+                </button>
+            </div>
+
+            <button class="new-case-btn" onclick="showPage('page-home')">再断一案</button>
+        </div>
+
+        <!-- 历史记录页 -->
+        <div class="page history-page" id="page-history">
+            <div class="history-header">
+                <button class="back-btn" onclick="showPage('page-home')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    返回
+                </button>
+                <h2 class="history-title">历史记录</h2>
+                <div style="width: 60px;"></div>
+            </div>
+
+            <div class="history-list" id="history-list">
+                <div class="history-item" onclick="showResult()">
+                    <div class="history-item-header">
+                        <span class="history-date">2026-03-04 15:30</span>
+                        <span class="history-winner party-a">甲方胜</span>
+                    </div>
+                    <p class="history-preview">甲方认为应该先买房，乙方认为应该先买车...</p>
+                </div>
+                <div class="history-item">
+                    <div class="history-item-header">
+                        <span class="history-date">2026-03-03 20:15</span>
+                        <span class="history-winner draw">平局</span>
+                    </div>
+                    <p class="history-preview">甲方认为应该去海底捞，乙方认为应该去西餐厅...</p>
+                </div>
+                <div class="history-item">
+                    <div class="history-item-header">
+                        <span class="history-date">2026-03-02 18:45</span>
+                        <span class="history-winner party-b">乙方胜</span>
+                    </div>
+                    <p class="history-preview">甲方认为周末应该加班，乙方认为应该休息...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedMode = 'anonymous';
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        function selectMode(element, mode) {
+            document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedMode = mode;
+            
+            if (mode === 'anonymous') {
+                document.getElementById('party-a-name').textContent = '有理的一方';
+                document.getElementById('party-b-name').textContent = '无理的一方';
+            } else {
+                document.getElementById('party-a-name').textContent = '甲方（请输入昵称）';
+                document.getElementById('party-b-name').textContent = '乙方（请输入昵称）';
+            }
+        }
+
+        // 字符计数
+        document.getElementById('input-party-a').addEventListener('input', function() {
+            document.getElementById('count-a').textContent = this.value.length;
+        });
+        document.getElementById('input-party-b').addEventListener('input', function() {
+            document.getElementById('count-b').textContent = this.value.length;
+        });
+
+        function submitJudgment() {
+            const inputA = document.getElementById('input-party-a').value.trim();
+            const inputB = document.getElementById('input-party-b').value.trim();
+            
+            if (inputA.length < 10 || inputB.length < 10) {
+                alert('请输入更完整的观点（至少10个字）');
+                return;
+            }
+
+            showPage('page-loading');
+            
+            // 模拟AI分析
+            setTimeout(() => {
+                showPage('page-result');
+            }, 3000);
+        }
+
+        function shareResult() {
+            alert('分享功能将跳转到微信分享');
+        }
+
+        function saveResult() {
+            alert('已保存到历史记录');
+        }
+
+        function showResult() {
+            showPage('page-result');
+        }
+    </script>
+</body>
+</html>
