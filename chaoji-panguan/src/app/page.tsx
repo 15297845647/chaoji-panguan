@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { JudgmentMode, JudgmentStyle, JudgmentResult, HistoryItem, Judge } from '@/types';
+import { JudgmentMode, JudgmentStyle, JudgmentResult, HistoryItem, Judge, JudgmentSuggestion, ChatMessage } from '@/types';
 import HomePage from '@/components/HomePage';
 import ModePage from '@/components/ModePage';
 import StylePage from '@/components/StylePage';
@@ -11,8 +11,20 @@ import ResultPage from '@/components/ResultPage';
 import JudgeRegisterPage from '@/components/JudgeRegisterPage';
 import InviteJudgePage from '@/components/InviteJudgePage';
 import JudgeDashboardPage from '@/components/JudgeDashboardPage';
+import CaseViewPage from '@/components/CaseViewPage';
 
-type Page = 'home' | 'mode' | 'style' | 'input' | 'loading' | 'result' | 'judge-register' | 'invite-judge' | 'judge-dashboard';
+type Page = 'home' | 'mode' | 'style' | 'input' | 'loading' | 'result' | 'judge-register' | 'invite-judge' | 'judge-dashboard' | 'case-view';
+
+interface Case {
+  id: string;
+  partyAName: string;
+  partyBName: string;
+  messages: ChatMessage[];
+  status: 'pending' | 'judging' | 'completed';
+  createdAt: string;
+  aiSuggestion?: JudgmentSuggestion;
+  finalJudgment?: JudgmentSuggestion;
+}
 
 export default function Main() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -22,6 +34,26 @@ export default function Main() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [currentJudge, setCurrentJudge] = useState<Judge | null>(null);
   const [invitedJudge, setInvitedJudge] = useState<Judge | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [currentCases, setCurrentCases] = useState<Case[]>([]);
+
+  // 检查 URL 中的邀请码
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteCode = params.get('invite');
+    if (inviteCode) {
+      // 处理邀请码
+      const savedCases = localStorage.getItem('pending-invites');
+      if (savedCases) {
+        try {
+          const invites = JSON.parse(savedCases);
+          // 验证邀请码并加入案件
+        } catch (e) {
+          console.error('Failed to parse invites:', e);
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // 从 localStorage 加载历史记录
@@ -31,6 +63,16 @@ export default function Main() {
         setHistory(JSON.parse(savedHistory));
       } catch (e) {
         console.error('Failed to parse history:', e);
+      }
+    }
+
+    // 加载当前判官的案件
+    const savedCases = localStorage.getItem('judge-cases');
+    if (savedCases) {
+      try {
+        setCurrentCases(JSON.parse(savedCases));
+      } catch (e) {
+        console.error('Failed to parse cases:', e);
       }
     }
   }, []);
@@ -53,6 +95,26 @@ export default function Main() {
 
   const handleStyleContinue = () => {
     setCurrentPage('invite-judge');
+  };
+
+  // 生成邀请码
+  const generateInviteCode = (): string => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    // 保存邀请码
+    const savedCodes = localStorage.getItem('invite-codes');
+    const codes = savedCodes ? JSON.parse(savedCodes) : {};
+    codes[code] = {
+      judgeId: currentJudge?.id,
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('invite-codes', JSON.stringify(codes));
+    
+    return code;
   };
 
   // 判官相关
@@ -99,15 +161,85 @@ export default function Main() {
   };
 
   const handleEnterJudgeDashboard = () => {
-    setCurrentPage('judge-register');
+    // 检查是否已登录判官
+    const savedJudges = localStorage.getItem('registered-judges');
+    const judges: Judge[] = savedJudges ? JSON.parse(savedJudges) : [];
+    
+    if (judges.length > 0) {
+      // 显示判官选择列表或直接进入
+      setCurrentJudge(judges[0]);
+      setCurrentPage('judge-dashboard');
+    } else {
+      setCurrentPage('judge-register');
+    }
   };
 
   const handleBackFromDashboard = () => {
     setCurrentPage('home');
   };
 
+  const handleViewCase = (caseId: string) => {
+    setSelectedCaseId(caseId);
+    setCurrentPage('case-view');
+  };
+
+  const handleSubmitJudgment = (caseId: string, judgment: JudgmentSuggestion) => {
+    // 更新案件状态
+    const updatedCases = currentCases.map(c => {
+      if (c.id === caseId) {
+        return {
+          ...c,
+          status: 'completed' as const,
+          finalJudgment: judgment
+        };
+      }
+      return c;
+    });
+    
+    setCurrentCases(updatedCases);
+    localStorage.setItem('judge-cases', JSON.stringify(updatedCases));
+    
+    // 更新判官统计
+    if (currentJudge) {
+      const savedJudges = localStorage.getItem('registered-judges');
+      const judges: Judge[] = savedJudges ? JSON.parse(savedJudges) : [];
+      const updatedJudges = judges.map(j => {
+        if (j.id === currentJudge.id) {
+          return {
+            ...j,
+            totalCases: j.totalCases + 1
+          };
+        }
+        return j;
+      });
+      localStorage.setItem('registered-judges', JSON.stringify(updatedJudges));
+    }
+    
+    setSelectedCaseId(null);
+    setCurrentPage('judge-dashboard');
+  };
+
   const handleSubmit = async (partyA: string, partyB: string) => {
     setCurrentPage('loading');
+
+    // 如果有邀请判官，创建案件
+    if (invitedJudge) {
+      const newCase: Case = {
+        id: Date.now().toString(),
+        partyAName: partyA,
+        partyBName: partyB,
+        messages: [],
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+      
+      // 保存到判官的案件列表
+      const savedCases = localStorage.getItem('judge-cases');
+      const cases: Case[] = savedCases ? JSON.parse(savedCases) : [];
+      cases.push(newCase);
+      localStorage.setItem('judge-cases', JSON.stringify(cases));
+      setCurrentCases(cases);
+    }
 
     try {
       const response = await fetch('/api/judge', {
@@ -120,6 +252,33 @@ export default function Main() {
 
       const data = await response.json();
       setResult(data);
+
+      // 如果有邀请判官，生成 AI 建议并更新案件
+      if (invitedJudge) {
+        const aiSuggestion: JudgmentSuggestion = {
+          winner: data.winner,
+          winnerName: data.winnerName,
+          subtitle: data.subtitle,
+          reason: data.reason,
+          dimensions: data.dimensions || []
+        };
+        
+        const savedCases = localStorage.getItem('judge-cases');
+        const cases: Case[] = savedCases ? JSON.parse(savedCases) : [];
+        const updatedCases = cases.map(c => {
+          if (c.partyAName === partyA && c.partyBName === partyB && c.status === 'pending') {
+            return {
+              ...c,
+              status: 'judging' as const,
+              messages: [], // TODO: 添加对话历史
+              aiSuggestion
+            };
+          }
+          return c;
+        });
+        localStorage.setItem('judge-cases', JSON.stringify(updatedCases));
+        setCurrentCases(updatedCases);
+      }
 
       // 保存到历史记录
       const newHistoryItem: HistoryItem = {
@@ -234,7 +393,16 @@ export default function Main() {
         <JudgeDashboardPage
           judge={currentJudge}
           onBack={handleBackFromDashboard}
-          onViewCase={(caseId) => console.log('View case:', caseId)}
+          onViewCase={handleViewCase}
+          onGenerateInviteCode={generateInviteCode}
+        />
+      )}
+      {currentPage === 'case-view' && selectedCaseId && currentJudge && (
+        <CaseViewPage
+          caseId={selectedCaseId}
+          judge={currentJudge}
+          onBack={() => setCurrentPage('judge-dashboard')}
+          onSubmitJudgment={handleSubmitJudgment}
         />
       )}
     </div>
